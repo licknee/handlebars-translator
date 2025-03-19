@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handlebars Translator for Iterable</title>
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .input-section, .output-section, .test-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: bold;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .input-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .input-text {
+            color: #666;
+            white-space: nowrap;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .example {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .example-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .example-item:hover {
+            background-color: #e9ecef;
+        }
+
+        .example-item span {
+            color: #666;
+        }
+
+        .example-item .highlight {
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        .output {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+        }
+
+        .test-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .test-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-top: 5px;
+        }
+
+        .note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Handlebars Translator for Iterable</h1>
+        
+        <div class="note">
+            <strong>Note:</strong> Variables should include a prefix with triple colons (e.g., LFC:::variable_name, mops:::status, hyperloop:::tier)
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <span class="input-text">if</span>
+                <input type="text" id="variableInput" placeholder="variable (e.g., LFC:::am_name)">
+                <span class="input-text">is equal to</span>
+                <input type="text" id="valueInput" placeholder="value (e.g., Premium)">
+                <span class="input-text">then show</span>
+                <input type="text" id="resultInput" placeholder="result text to display">
+                <button id="translateBtn">Translate</button>
+            </div>
+        </div>
+
+        <div class="example">
+            <strong>Click an example to use it:</strong>
+            <div class="example-item">
+                <span>Variable:</span> <span class="highlight">LFC:::am_name</span>
+                <span>Value:</span> <span class="highlight">Premium</span>
+                <span>Result:</span> <span class="highlight">Welcome back, Premium member!</span>
+            </div>
+            <div class="example-item">
+                <span>Variable:</span> <span class="highlight">mops:::subscription_status</span>
+                <span>Value:</span> <span class="highlight">active</span>
+                <span>Result:</span> <span class="highlight">Your subscription is active</span>
+            </div>
+            <div class="example-item">
+                <span>Variable:</span> <span class="highlight">hyperloop:::user_tier</span>
+                <span>Value:</span> <span class="highlight">gold</span>
+                <span>Result:</span> <span class="highlight">Access your exclusive Gold benefits</span>
+            </div>
+        </div>
+
+        <div class="output-section">
+            <label>Handlebars Template:</label>
+            <div id="output" class="output"></div>
+        </div>
+
+        <div class="test-section">
+            <label>Test Your Template:</label>
+            <div class="test-input">
+                <input id="testVariable" placeholder="Variable (e.g., LFC:::am_name)">
+                <input id="testValue" placeholder="Value (e.g., Premium)">
+                <button id="testBtn">Test</button>
+            </div>
+            <div id="testOutput" class="output"></div>
+        </div>
+    </div>
+
+    <script>
+        class HandlebarsTranslator {
+            translate(variable, value, result) {
+                return `{{#if (eq ${variable} "${value}")}}
+    ${result}
+{{/if}}`;
+            }
+        }
+
+        // Initialize translator
+        const translator = new HandlebarsTranslator();
+
+        // Register the eq helper
+        Handlebars.registerHelper('eq', function(a, b) {
+            return a === b;
+        });
+
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up translate button
+            const translateBtn = document.getElementById('translateBtn');
+            translateBtn.addEventListener('click', function() {
+                const variable = document.getElementById('variableInput').value.trim();
+                const value = document.getElementById('valueInput').value.trim();
+                const result = document.getElementById('resultInput').value.trim();
+                
+                if (variable && value && result) {
+                    const output = translator.translate(variable, value, result);
+                    document.getElementById('output').textContent = output;
+                    // Auto-fill test inputs
+                    document.getElementById('testVariable').value = variable;
+                    document.getElementById('testValue').value = value;
+                } else {
+                    document.getElementById('output').textContent = "Please fill in all fields";
+                }
+            });
+
+            // Set up test button
+            const testBtn = document.getElementById('testBtn');
+            testBtn.addEventListener('click', function() {
+                testTemplate();
+            });
+
+            // Add example click handlers
+            const examples = document.querySelectorAll('.example-item');
+            examples.forEach(example => {
+                example.addEventListener('click', function() {
+                    const highlights = this.querySelectorAll('.highlight');
+                    document.getElementById('variableInput').value = highlights[0].textContent;
+                    document.getElementById('valueInput').value = highlights[1].textContent;
+                    document.getElementById('resultInput').value = highlights[2].textContent;
+                    document.getElementById('translateBtn').click();
+                });
+            });
+        });
+
+        function testTemplate() {
+            const template = document.getElementById('output').textContent;
+            if (!template || template === "Please fill in all fields") {
+                document.getElementById('testOutput').textContent = "Please create a valid template first.";
+                return;
+            }
+
+            const variable = document.getElementById('testVariable').value;
+            const value = document.getElementById('testValue').value;
+
+            try {
+                const compiledTemplate = Handlebars.compile(template);
+                const context = {};
+                context[variable] = value;
+                const result = compiledTemplate(context);
+                document.getElementById('testOutput').textContent = result || "(no output - condition not met)";
+            } catch (error) {
+                document.getElementById('testOutput').textContent = "Error: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
