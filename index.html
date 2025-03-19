@@ -107,12 +107,46 @@
             font-weight: bold;
         }
 
+        .output-section {
+            margin-bottom: 20px;
+        }
+
+        .output-container {
+            position: relative;
+        }
+
         .output {
             background-color: #f8f9fa;
             padding: 15px;
             border-radius: 4px;
             font-family: 'Courier New', Courier, monospace;
             white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .copy-button:hover {
+            background-color: #e9ecef;
+            color: #333;
+        }
+
+        .copy-button.copied {
+            background-color: #28a745;
+            color: white;
+            border-color: #28a745;
         }
 
         .test-input {
@@ -134,11 +168,17 @@
         }
 
         .note {
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
+            background-color: #e8f4f8;
+            border: 1px solid #b8e2f2;
             padding: 10px;
             border-radius: 4px;
             margin: 10px 0;
+            color: #0c5460;
+        }
+
+        .null-text {
+            color: #6c757d;
+            font-style: italic;
         }
     </style>
 </head>
@@ -147,7 +187,7 @@
         <h1>Handlebars Translator</h1>
         
         <div class="note">
-            <strong>Note:</strong> If using a list upload, variable should include a prefix with triple colons (e.g., LFC:::variable_name, mops:::variable_name)
+            <strong>Note:</strong> If using a list upload, variables should include a prefix with triple colons (e.g., LFC:::variable_name, mops:::variable_name)
         </div>
 
         <div class="input-section">
@@ -155,10 +195,17 @@
                 <span class="input-text">if</span>
                 <input type="text" id="variableInput" placeholder="variable (e.g., LFC:::am_name)">
                 <span class="input-text">is equal to</span>
-                <input type="text" id="valueInput" placeholder="value (e.g., Premium)">
+                <input type="text" id="valueInput" placeholder="value (text, number, or true/false)">
                 <span class="input-text">then show</span>
                 <input type="text" id="resultInput" placeholder="result text to display">
+            </div>
+            <div class="input-group">
+                <span class="input-text">else show</span>
+                <input type="text" id="elseInput" placeholder="(Optional) leave empty for null">
                 <button id="translateBtn">Translate</button>
+            </div>
+            <div class="note" style="margin-top: 10px;">
+                <strong>Tip:</strong> If you want to display another custom variable in your result text, make sure to surround the variable name with curly brackets (e.g., {{LFC:::am_name}})
             </div>
         </div>
 
@@ -167,30 +214,42 @@
             <div class="example-item">
                 <span>Variable:</span> <span class="highlight">LFC:::am_name</span>
                 <span>Value:</span> <span class="highlight">Premium</span>
-                <span>Result:</span> <span class="highlight">Welcome back, Premium member!</span>
+                <span>Then:</span> <span class="highlight">Welcome back, Premium member!</span>
+                <span>Else:</span> <span class="highlight null-text">(null)</span>
             </div>
             <div class="example-item">
-                <span>Variable:</span> <span class="highlight">mops:::subscription_status</span>
-                <span>Value:</span> <span class="highlight">active</span>
-                <span>Result:</span> <span class="highlight">Your subscription is active</span>
+                <span>Variable:</span> <span class="highlight">mops:::user_age</span>
+                <span>Value:</span> <span class="highlight">21</span>
+                <span>Then:</span> <span class="highlight">You can access all content</span>
+                <span>Else:</span> <span class="highlight">Age restricted content</span>
             </div>
             <div class="example-item">
-                <span>Variable:</span> <span class="highlight">hyperloop:::user_tier</span>
-                <span>Value:</span> <span class="highlight">gold</span>
-                <span>Result:</span> <span class="highlight">Access your exclusive Gold benefits</span>
+                <span>Variable:</span> <span class="highlight">hyperloop:::is_active</span>
+                <span>Value:</span> <span class="highlight">true</span>
+                <span>Then:</span> <span class="highlight">Your account is active</span>
+                <span>Else:</span> <span class="highlight null-text">(null)</span>
+            </div>
+            <div class="example-item">
+                <span>Variable:</span> <span class="highlight">LFC:::points</span>
+                <span>Value:</span> <span class="highlight">1000</span>
+                <span>Then:</span> <span class="highlight">Gold tier unlocked!</span>
+                <span>Else:</span> <span class="highlight">Earn more points for Gold tier</span>
             </div>
         </div>
 
         <div class="output-section">
-            <label>Handlebars Template:</label>
-            <div id="output" class="output"></div>
+            <label>Handlebars Output:</label>
+            <div class="output-container">
+                <div id="output" class="output"></div>
+                <button id="copyButton" class="copy-button" onclick="copyOutput()">Copy</button>
+            </div>
         </div>
 
         <div class="test-section">
             <label>Test Your Template:</label>
             <div class="test-input">
                 <input id="testVariable" placeholder="Variable (e.g., LFC:::am_name)">
-                <input id="testValue" placeholder="Value (e.g., Premium)">
+                <input id="testValue" placeholder="Value (text, number, or true/false)">
                 <button id="testBtn">Test</button>
             </div>
             <div id="testOutput" class="output"></div>
@@ -199,10 +258,53 @@
 
     <script>
         class HandlebarsTranslator {
-            translate(variable, value, result) {
-                return `{{#if (eq ${variable} "${value}")}}
-    ${result}
+            parseValue(value) {
+                // Remove quotes if they exist
+                value = value.trim();
+                
+                // Check for boolean
+                if (value.toLowerCase() === 'true') return true;
+                if (value.toLowerCase() === 'false') return false;
+                
+                // Check for number
+                if (!isNaN(value) && value !== '') {
+                    // If it's a whole number
+                    if (Number.isInteger(Number(value))) {
+                        return parseInt(value, 10);
+                    }
+                    // If it's a decimal
+                    return parseFloat(value);
+                }
+                
+                // Return as string if it's not a number or boolean
+                return value;
+            }
+
+            translate(variable, value, result, elseResult) {
+                const parsedValue = this.parseValue(value);
+                
+                // Handle different types in template
+                let valueInTemplate;
+                if (typeof parsedValue === 'string') {
+                    valueInTemplate = `"${parsedValue}"`;
+                } else {
+                    valueInTemplate = parsedValue;
+                }
+
+                let template = `{{#if (eq ${variable} ${valueInTemplate})}}
+    ${result}`;
+                
+                // Only add else section if elseResult is not empty
+                if (elseResult && elseResult.trim() !== '') {
+                    template += `
+{{else}}
+    ${elseResult}`;
+                }
+                
+                template += `
 {{/if}}`;
+                
+                return template;
             }
         }
 
@@ -211,6 +313,10 @@
 
         // Register the eq helper
         Handlebars.registerHelper('eq', function(a, b) {
+            // Handle type conversion for comparison
+            if (typeof a === 'string') {
+                a = translator.parseValue(a);
+            }
             return a === b;
         });
 
@@ -222,15 +328,16 @@
                 const variable = document.getElementById('variableInput').value.trim();
                 const value = document.getElementById('valueInput').value.trim();
                 const result = document.getElementById('resultInput').value.trim();
+                const elseResult = document.getElementById('elseInput').value.trim();
                 
                 if (variable && value && result) {
-                    const output = translator.translate(variable, value, result);
+                    const output = translator.translate(variable, value, result, elseResult);
                     document.getElementById('output').textContent = output;
                     // Auto-fill test inputs
                     document.getElementById('testVariable').value = variable;
                     document.getElementById('testValue').value = value;
                 } else {
-                    document.getElementById('output').textContent = "Please fill in all fields";
+                    document.getElementById('output').textContent = "Please fill in all required fields";
                 }
             });
 
@@ -248,6 +355,9 @@
                     document.getElementById('variableInput').value = highlights[0].textContent;
                     document.getElementById('valueInput').value = highlights[1].textContent;
                     document.getElementById('resultInput').value = highlights[2].textContent;
+                    // Handle null case in examples
+                    const elseText = highlights[3].textContent;
+                    document.getElementById('elseInput').value = elseText === '(null)' ? '' : elseText;
                     document.getElementById('translateBtn').click();
                 });
             });
@@ -255,7 +365,7 @@
 
         function testTemplate() {
             const template = document.getElementById('output').textContent;
-            if (!template || template === "Please fill in all fields") {
+            if (!template || template === "Please fill in all required fields") {
                 document.getElementById('testOutput').textContent = "Please create a valid template first.";
                 return;
             }
@@ -266,12 +376,32 @@
             try {
                 const compiledTemplate = Handlebars.compile(template);
                 const context = {};
-                context[variable] = value;
+                context[variable] = translator.parseValue(value);
                 const result = compiledTemplate(context);
-                document.getElementById('testOutput').textContent = result || "(no output - condition not met)";
+                document.getElementById('testOutput').textContent = result || "(no output)";
             } catch (error) {
                 document.getElementById('testOutput').textContent = "Error: " + error.message;
             }
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('output').textContent;
+            if (!output || output === "Please fill in all required fields") {
+                return;
+            }
+            
+            navigator.clipboard.writeText(output).then(() => {
+                const copyButton = document.getElementById('copyButton');
+                copyButton.textContent = 'Copied!';
+                copyButton.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyButton.textContent = 'Copy';
+                    copyButton.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
         }
     </script>
 </body>
